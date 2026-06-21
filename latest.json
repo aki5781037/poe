@@ -2,15 +2,15 @@
   "realm": "pc",
   "league": "Mirage",
   "epoch": 1782028800,
-  "generated_at": "2026-06-21T10:36:13.165996+00:00",
+  "generated_at": "2026-06-21T10:43:02.422155+00:00",
   "snapshot_utc": "2026-06-21T08:00:00+00:00",
   "snapshot_local": "2026-06-21T16:00:00+08:00",
-  "age_minutes": "156.2194332666666666666666667",
+  "age_minutes": "163.04036925",
   "status": "stale",
   "errors": [],
   "candidate_count": 0,
   "stale_epoch_history": [
-    "1782025200",
+    "1782028800",
     "1782028800",
     "1782028800"
   ],
