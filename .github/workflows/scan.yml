@@ -34,7 +34,7 @@ jobs:
 
       - name: Run scanner
         env:
-          POE2_SCOUT_USER_AGENT: POE2CurrencyFlip/0.1 (contact: user-configured-email)
+          POE2_SCOUT_USER_AGENT: "POE2CurrencyFlip/0.1 (contact: your-email@example.com)"
         run: |
           set +e
           python -m src.main

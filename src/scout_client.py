@@ -39,7 +39,7 @@ class ScoutClient:
             )
         if "json" not in content_type.lower():
             raise ScanError(
-                f"非 JSON 回應; HTTP {response.status_code}; Content-Type={content_type}; path={path}",
+                f"非 JSON 回應; HTTP {response.status_code}; Content-Type={content_type}; path={path}; body={response.text[:300]}",
                 phase=phase,
             )
         data = response.json()

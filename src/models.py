@@ -16,7 +16,7 @@ class ScanError(RuntimeError):
 
 
 class CandidateStatus(StrEnum):
-    EXECUTABLE = "可執行候選"
+    NEEDS_IN_GAME_VERIFICATION = "需要遊戲內驗證"
     WATCH = "觀察候選"
     EXCLUDED = "排除候選"
 

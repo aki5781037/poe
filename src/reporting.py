@@ -44,13 +44,13 @@ def render_markdown(result: ScanResult, names: dict[str, str]) -> str:
             lines.append(f"- {error}")
         return "\n".join(lines) + "\n"
 
-    executable = [candidate for candidate in result.candidates if candidate.executable]
-    watch = [candidate for candidate in result.candidates if not candidate.executable]
-    if not executable and not watch:
+    review = [candidate for candidate in result.candidates if candidate.status.value == "需要遊戲內驗證"]
+    watch = [candidate for candidate in result.candidates if candidate.status.value != "需要遊戲內驗證"]
+    if not review and not watch:
         lines.append("本小時沒有符合條件的歷史候選。")
         return "\n".join(lines) + "\n"
 
-    for title, items in (("可執行候選", executable), ("觀察候選", watch)):
+    for title, items in (("需要遊戲內驗證", review), ("觀察候選", watch)):
         if not items:
             continue
         lines.extend([f"## {title}", ""])
@@ -67,7 +67,7 @@ def _candidate_lines(candidate: Candidate, names: dict[str, str]) -> list[str]:
         "",
         f"- 起始通貨: {names[candidate.start_currency]}",
         f"- 起始通貨餘額: {candidate.start_balance}",
-        f"- 是否當前可執行: {'是' if candidate.executable else '否'}",
+        f"- 是否可立即下單: 否",
         f"- 數據 epoch: `{candidate.epoch}`",
         f"- UTC 時間: `{candidate.utc_time.isoformat()}`",
         f"- Asia/Shanghai 時間: `{candidate.local_time.isoformat()}`",

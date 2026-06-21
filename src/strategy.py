@@ -96,9 +96,10 @@ def evaluate_candidates(
             gold_per_profit = total_gold / fraction_to_decimal(profit)
             profit_per_100k = fraction_to_decimal(profit) / (total_gold / Decimal("100000")) if total_gold > 0 else None
             risk_tags = ["歷史候選", "需要遊戲內驗證", "訂單比例未知"]
-            executable = balance > 0 and total_gold <= Decimal(str(portfolio_config["gold_balance"]))
-            status = CandidateStatus.EXECUTABLE if executable else CandidateStatus.WATCH
-            if not executable:
+            has_budget = balance > 0 and total_gold <= Decimal(str(portfolio_config["gold_balance"]))
+            executable = False
+            status = CandidateStatus.NEEDS_IN_GAME_VERIFICATION if has_budget else CandidateStatus.WATCH
+            if not has_budget:
                 risk_tags.append("缺少起始通貨")
             if gold_per_profit > Decimal(str(strategy_config["max_gold_per_divine"])):
                 status = CandidateStatus.EXCLUDED

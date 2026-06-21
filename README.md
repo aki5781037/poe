@@ -1,5 +1,7 @@
 # poe2-currency-flip
 
+> 当前仓库是 Public。未来若加入 GGG OAuth、Telegram Token、Discord Webhook 或个人联系方式，必须先改为 Private Repository，并将凭据放入 GitHub Secrets / Variables。
+
 `poe2-currency-flip` 是 POE2 國際服通貨交易所小時級歷史候選掃描器。它只使用 POE2 Scout 公開 API，輸出歷史聚合數據候選與遊戲內複核閾值，不是實時盤口工具，也不會自動點擊、讀取封包、使用 Cookie 或下單。
 
 ## 快速開始
