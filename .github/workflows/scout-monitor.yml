@@ -1,0 +1,316 @@
+name: POE2 Scout Update Monitor
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/poe2-currency-flip
+    paths:
+      - ".github/workflows/scout-monitor.yml"
+  schedule:
+    - cron: "*/15 * * * *"
+
+concurrency:
+  group: poe2-scout-update-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read previous market status
+        run: |
+          set +e
+          git fetch origin market-feed --depth=1
+          git show FETCH_HEAD:status.json > "$RUNNER_TEMP/previous_market_status.json" 2>/dev/null || true
+          test -s "$RUNNER_TEMP/previous_market_status.json" || echo "{}" > "$RUNNER_TEMP/previous_market_status.json"
+
+      - name: Check Scout latest epoch
+        id: check
+        env:
+          PREVIOUS_MARKET_STATUS: ${{ runner.temp }}/previous_market_status.json
+          POE2_SCOUT_USER_AGENT: "POE2CurrencyFlip/0.1"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          def write_output(updated, api_error):
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+                  fh.write(f"updated={str(updated).lower()}\n")
+                  fh.write(f"api_error={str(api_error).lower()}\n")
+
+          def write_monitor(data):
+              Path(os.environ["RUNNER_TEMP"], "scout-monitor.json").write_text(
+                  json.dumps(data, ensure_ascii=False, indent=2),
+                  encoding="utf-8",
+              )
+
+          previous_path = Path(os.environ["PREVIOUS_MARKET_STATUS"])
+          previous = json.loads(previous_path.read_text(encoding="utf-8"))
+          strategy_text = Path("config/strategy.yml").read_text(encoding="utf-8")
+          max_age_match = re.search(r"(?m)^max_snapshot_age_minutes:\s*(\d+)\s*$", strategy_text)
+          max_snapshot_age_minutes = int(max_age_match.group(1)) if max_age_match else 70
+          previous_epoch_raw = previous.get("snapshot_epoch")
+          try:
+              previous_epoch = int(previous_epoch_raw) if previous_epoch_raw is not None else None
+          except (TypeError, ValueError):
+              previous_epoch = None
+
+          generated_at = datetime.now(timezone.utc)
+          headers = {
+              "Accept": "application/json",
+              "User-Agent": os.environ.get("POE2_SCOUT_USER_AGENT", "POE2CurrencyFlip/0.1"),
+          }
+          try:
+              leagues_request = urllib.request.Request(
+                  "https://api.poe2scout.com/pc/Leagues",
+                  headers=headers,
+              )
+              with urllib.request.urlopen(leagues_request, timeout=30) as response:
+                  leagues = json.loads(response.read())
+              current = [
+                  league for league in leagues
+                  if league.get("IsCurrent") and "hardcore" not in str(league.get("Value", "")).lower()
+              ] or [league for league in leagues if league.get("IsCurrent")]
+              if not current:
+                  raise RuntimeError("No current Scout league found.")
+              league_name = current[0]["Value"]
+              snapshot_request = urllib.request.Request(
+                  f"https://api.poe2scout.com/pc/Leagues/{league_name}/ExchangeSnapshot",
+                  headers=headers,
+              )
+              with urllib.request.urlopen(snapshot_request, timeout=30) as response:
+                  content_type = response.headers.get("content-type", "")
+                  body = response.read()
+                  status_code = response.status
+          except Exception as exc:
+              write_monitor({
+                  "api_error": True,
+                  "generated_at_utc": generated_at.isoformat(),
+                  "error_summary": str(exc)[:300],
+                  "realm": "pc",
+                  "previous_epoch": previous_epoch,
+              })
+              write_output(False, True)
+              raise SystemExit(0)
+
+          if status_code >= 400 or "json" not in content_type.lower():
+              write_monitor({
+                  "api_error": True,
+                  "generated_at_utc": generated_at.isoformat(),
+                  "http_status": status_code,
+                  "content_type": content_type,
+                  "body_preview": body[:300].decode("utf-8", errors="replace"),
+                  "realm": "pc",
+                  "league": league_name,
+                  "previous_epoch": previous_epoch,
+              })
+              write_output(False, True)
+              raise SystemExit(0)
+
+          data = json.loads(body)
+          latest_epoch = int(data["Epoch"])
+          snapshot_utc = datetime.fromtimestamp(latest_epoch, tz=timezone.utc)
+          snapshot_shanghai = snapshot_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+          age_minutes = round((generated_at - snapshot_utc).total_seconds() / 60, 3)
+          updated = previous_epoch is None or latest_epoch > previous_epoch
+          stale = age_minutes > max_snapshot_age_minutes
+          previous_history = previous.get("stale_epoch_history") or []
+          history = [str(latest_epoch)]
+          for item in previous_history:
+              if len(history) >= 3:
+                  break
+              history.append(str(item))
+          source_delay_alert = previous.get("status") == "stale" and stale and not updated
+          write_monitor({
+              "api_error": False,
+              "updated": updated,
+              "stale": stale,
+              "latest_epoch": latest_epoch,
+              "previous_epoch": previous_epoch,
+              "realm": "pc",
+              "league": league_name,
+              "generated_at_utc": generated_at.isoformat(),
+              "snapshot_time_utc": snapshot_utc.isoformat(),
+              "snapshot_time_asia_shanghai": snapshot_shanghai.isoformat(),
+              "snapshot_age_minutes": age_minutes,
+              "max_snapshot_age_minutes": max_snapshot_age_minutes,
+              "stale_epoch_history": history,
+              "source_delay_alert": source_delay_alert,
+          })
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"updated={str(updated).lower()}\n")
+              fh.write("api_error=false\n")
+              fh.write(f"stale={str(stale).lower()}\n")
+          PY
+
+      - name: Trigger full scanner when Scout updates
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          owner_repo = os.environ["GITHUB_REPOSITORY"]
+          url = f"https://api.github.com/repos/{owner_repo}/actions/workflows/scan.yml/dispatches"
+          payload = json.dumps({"ref": "codex/poe2-currency-flip"}).encode("utf-8")
+          request = urllib.request.Request(
+              url,
+              data=payload,
+              method="POST",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              if response.status not in (200, 201, 204):
+                  raise SystemExit(f"unexpected dispatch status: {response.status}")
+          PY
+
+      - name: Build monitor public feed
+        if: steps.check.outputs.updated != 'true' && (steps.check.outputs.api_error == 'true' || steps.check.outputs.stale == 'true')
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/public-feed"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          monitor = json.loads(Path(os.environ["RUNNER_TEMP"], "scout-monitor.json").read_text(encoding="utf-8"))
+          out_dir = Path(os.environ["RUNNER_TEMP"], "public-feed")
+          generated = monitor.get("generated_at_utc")
+          status = "api_error" if monitor.get("api_error") else "stale"
+          status_json = {
+              "generated_at_utc": generated,
+              "snapshot_epoch": str(monitor.get("latest_epoch")) if monitor.get("latest_epoch") is not None else None,
+              "snapshot_time_utc": monitor.get("snapshot_time_utc"),
+              "snapshot_time_asia_shanghai": monitor.get("snapshot_time_asia_shanghai"),
+              "snapshot_age_minutes": monitor.get("snapshot_age_minutes"),
+              "status": status,
+              "candidate_count": 0,
+              "max_snapshot_age_minutes": monitor.get("max_snapshot_age_minutes"),
+              "stale_epoch_history": monitor.get("stale_epoch_history", []),
+              "source_delay_alert": monitor.get("source_delay_alert", False),
+          }
+          latest_json = {
+              "generated_at": generated,
+              "epoch": monitor.get("latest_epoch"),
+              "snapshot_utc": monitor.get("snapshot_time_utc"),
+              "snapshot_local": monitor.get("snapshot_time_asia_shanghai"),
+              "age_minutes": str(monitor.get("snapshot_age_minutes")) if monitor.get("snapshot_age_minutes") is not None else None,
+              "status": status,
+              "errors": [],
+              "candidate_count": 0,
+              "max_snapshot_age_minutes": monitor.get("max_snapshot_age_minutes"),
+              "candidates": [],
+              "stale_epoch_history": monitor.get("stale_epoch_history", []),
+              "source_delay_alert": monitor.get("source_delay_alert", False),
+          }
+          if status == "api_error":
+              summary = monitor.get("error_summary") or monitor.get("body_preview") or "Scout API request failed."
+              latest_json["errors"].append(summary[:300])
+              lines = [
+                  "# POE2 Currency Market Public Feed",
+                  "",
+                  "- Status: `api_error`",
+                  f"- Generated at UTC: `{generated}`",
+                  "",
+                  "## API Error",
+                  "",
+                  summary[:300],
+                  "",
+                  "> Public feed contains only sanitized summary data. It does not include raw API responses, personal assets, Secrets, Tokens, or environment variables.",
+                  "",
+              ]
+          else:
+              lines = [
+                  "# POE2 Currency Market Public Feed",
+                  "",
+                  "- Status: `stale`",
+                  f"- Snapshot epoch: `{monitor.get('latest_epoch')}`",
+                  f"- Snapshot time UTC: `{monitor.get('snapshot_time_utc')}`",
+                  f"- Snapshot time Asia/Shanghai: `{monitor.get('snapshot_time_asia_shanghai')}`",
+                  f"- Generated at UTC: `{generated}`",
+                  f"- Snapshot age minutes: `{monitor.get('snapshot_age_minutes')}`",
+                  "",
+                  "## Data stale / no arbitrage calculated",
+                  "",
+                  "Scout has not published a newer snapshot yet. This monitor does not calculate strategy, candidates, or profit.",
+                  "",
+              ]
+              if monitor.get("source_delay_alert"):
+                  lines.extend([
+                      "## Scout source delay alert",
+                      "",
+                      f"Two consecutive monitor results are stale. Recent epochs: {', '.join(monitor.get('stale_epoch_history', []))}",
+                      "",
+                  ])
+              lines.extend([
+                  "> Public feed is for reading market candidates only. It does not include personal assets, raw API data, or secrets.",
+                  "",
+              ])
+          (out_dir / "status.json").write_text(json.dumps(status_json, ensure_ascii=False, indent=2), encoding="utf-8")
+          (out_dir / "latest.json").write_text(json.dumps(latest_json, ensure_ascii=False, indent=2), encoding="utf-8")
+          (out_dir / "latest.md").write_text("\n".join(lines), encoding="utf-8")
+          PY
+
+      - name: Publish monitor public feed
+        if: steps.check.outputs.updated != 'true' && (steps.check.outputs.api_error == 'true' || steps.check.outputs.stale == 'true')
+        run: |
+          set -euo pipefail
+          publish_dir="$RUNNER_TEMP/public-feed"
+          test -f "$publish_dir/latest.md"
+          test -f "$publish_dir/latest.json"
+          test -f "$publish_dir/status.json"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git reset --hard HEAD
+          git clean -fdx
+
+          if git ls-remote --exit-code --heads origin market-feed >/dev/null 2>&1; then
+            git fetch origin market-feed
+            git checkout market-feed
+            git reset --hard origin/market-feed
+          else
+            git checkout --orphan market-feed
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          find . -mindepth 1 -maxdepth 1 \
+            ! -path './.git' \
+            ! -path './.git/*' \
+            -exec rm -rf {} +
+          cp "$publish_dir/latest.md" latest.md
+          cp "$publish_dir/latest.json" latest.json
+          cp "$publish_dir/status.json" status.json
+          git add latest.md latest.json status.json
+
+          if git diff --cached --quiet; then
+            echo "market-feed unchanged"
+          else
+            timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            git commit -m "chore: update market feed $timestamp"
+            git push origin HEAD:market-feed
+          fi
