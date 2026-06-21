@@ -1,0 +1,3 @@
+# 可在此限制或标注候选中间通货。留空时由快照交易图自动发现。
+include_api_ids: []
+exclude_api_ids: []

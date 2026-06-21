@@ -1,0 +1,11 @@
+exalted_balance: 7500
+gold_balance: 1860000
+test_cap_percent: 0.02
+max_deploy_percent: 0.40
+min_historical_profit_percent: 0.12
+max_gold_per_divine: 120000
+max_snapshot_age_minutes: 70
+display_timezone: Asia/Shanghai
+realm: pc
+league: auto
+minimum_leg_volume_multiplier: 3

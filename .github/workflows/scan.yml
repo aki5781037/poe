@@ -1,0 +1,64 @@
+name: POE2 Currency Flip Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "12 * * * *"
+
+concurrency:
+  group: poe2-currency-flip-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: Run tests
+        run: pytest
+
+      - name: Run scanner
+        env:
+          POE2_SCOUT_USER_AGENT: POE2CurrencyFlip/0.1 (contact: user-configured-email)
+        run: |
+          set +e
+          python -m src.main
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            echo "Scanner failed. See reports/latest.md for HTTP status, Content-Type, error summary, and API discovery phase. No environment variables are printed."
+          fi
+          exit "$code"
+
+      - name: Write Step Summary
+        if: always()
+        run: |
+          if [ -f reports/latest.md ]; then
+            cat reports/latest.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "reports/latest.md was not generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: poe2-currency-flip-reports
+          path: |
+            reports/**
+            docs/api-contract.md
+          retention-days: 14

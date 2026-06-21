@@ -1,0 +1,10 @@
+target_currency: divine
+eligible_start_currencies:
+  - exalted
+  - chaos
+  - annulment
+max_legs: 2
+future_max_legs: 3
+allow_repeated_currency: false
+require_same_epoch: true
+require_direct_base_to_divine_benchmark: true

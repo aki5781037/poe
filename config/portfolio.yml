@@ -1,0 +1,9 @@
+gold_balance: 1860000
+balances:
+  exalted: 7500
+  chaos: 0
+  divine: 0
+  annulment: 0
+execution_mode: existing_holdings_only
+allow_divine_seed: false
+reinvest_divine: false
