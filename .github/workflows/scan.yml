@@ -4,6 +4,14 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "12 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "config/**"
+      - "tests/**"
+      - ".github/workflows/scan.yml"
+      - "pyproject.toml"
 
 concurrency:
   group: poe2-currency-flip-scan

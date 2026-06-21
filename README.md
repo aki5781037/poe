@@ -46,7 +46,10 @@ POE2 Scout 的快照是已完成小時的歷史聚合數據，成交量只能作
 `.github/workflows/scan.yml` 支持：
 
 - `workflow_dispatch` 手動執行。
-- UTC 每小時第 12 分鐘執行：`12 * * * *`。
+- 自動掃描：UTC 每小時第 12 分鐘執行：`12 * * * *`。
+- 掃描對象：上一完整小時的 POE2 Scout 歷史快照。
+- 手動運行僅用於立即檢查或調試，不代表當前遊戲內盤口。
+- push 觸發：只在 `main` 分支修改 scanner、config、tests、workflow 或 `pyproject.toml` 時運行一次測試。
 - concurrency 防止重疊運行。
 - 最小權限：`contents: read`。
 - 上傳 raw 響應與報告為 Artifact，保存 14 天。
