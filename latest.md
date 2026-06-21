@@ -1,18 +1,20 @@
-# POE2 Currency Market Public Feed
+# POE2 通貨市場候選公開報告
 
-- Status: `stale`
-- Snapshot epoch: `1782032400`
-- Snapshot time UTC: `2026-06-21T09:00:00+00:00`
-- Snapshot time Asia/Shanghai: `2026-06-21T17:00:00+08:00`
-- Generated at UTC: `2026-06-21T11:23:17.743914+00:00`
-- Snapshot age minutes: `143.296`
+- 狀態: `stale`
+- Realm: `pc`
+- League: `Mirage`
+- 數據 epoch: `1782032400`
+- 數據時間 UTC: `2026-06-21T09:00:00+00:00`
+- 數據時間 Asia/Shanghai: `2026-06-21T17:00:00+08:00`
+- 報告生成時間: `2026-06-21T11:52:55.641620+00:00`
+- 數據延遲分鐘數: `172.92736`
 
-## Data stale / no arbitrage calculated
+> 本報告是 POE2 Scout 已完成小時的歷史聚合數據，不是遊戲內實時可用交易盤口。必須用遊戲內可用交易複核後才可下單。
 
-Scout has not published a newer snapshot yet. This monitor does not calculate strategy, candidates, or profit.
+## 數據過期 / 本次未計算套利
 
-## Scout source delay alert
+POE2 Scout 快照已超過允許延遲，本次不計算策略、不生成候選、不計算利潤。
 
-Two consecutive monitor results are stale. Recent epochs: 1782032400, 1782028800, 1782028800
+## Scout 數據源未刷新
 
-> Public feed is for reading market candidates only. It does not include personal assets, raw API data, or secrets.
+連續兩次掃描結果為 stale。最近 epoch: 1782028800, 1782028800, 1782032400
