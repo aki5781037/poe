@@ -4,6 +4,8 @@
 
 `poe2-currency-flip` 是 POE2 國際服通貨交易所小時級歷史候選掃描器。它只使用 POE2 Scout 公開 API，輸出歷史聚合數據候選與遊戲內複核閾值，不是實時盤口工具，也不會自動點擊、讀取封包、使用 Cookie 或下單。
 
+RelativePrice 是相对价值，不是直接兑换方向；路径计算必须使用 `source_price / target_price`。
+
 ## 快速開始
 
 1. 在 GitHub 建立 Private Repository，將本專案推送到該私有倉庫。
@@ -28,9 +30,10 @@ python -m src.main
 
 ## 配置
 
-- `config/portfolio.yml`: 配置實際持有資產與金幣餘額。默認 `execution_mode: existing_holdings_only`，只從餘額大於 0 的起始通貨計算可執行候選。
+- `config/portfolio.yml`: 配置實際持有資產與金幣餘額。默認 `execution_mode: existing_holdings_only`，只從餘額大於 0 的起始通貨計算可複核候選。
 - `config/routing.yml`: 配置目標通貨、可作為起點的基礎通貨、最大腿數。默認只掃描 2 腿路徑：基礎通貨 → 材料/中間通貨 → 神聖石。
-- `config/gold.yml`: 配置取得每種通貨或材料時的金幣成本。未知金幣成本的材料會被排除。
+- `config/market-reference.yml`: 配置正式可交易项目的繁体中文名、金幣成本、来源 URL、核对日期和备注。没有 `source_url` 和 `verified_at` 的金幣成本一律视为未知。
+- `config/gold.yml`: 旧版兼容配置，不作为正式金幣来源。
 - `config/names.zh-Hant.yml`: 配置 API ID 到國際服繁體中文名稱。未映射名稱不會進入正式候選報告。
 - `config/strategy.yml`: 配置最小歷史利潤率、快照最大延遲、測試倉位比例、顯示時區等。
 

@@ -14,7 +14,7 @@ class ScoutClient:
     def __init__(
         self,
         base_url: str = "https://api.poe2scout.com",
-        user_agent: str = "POE2CurrencyFlip/0.1 (contact: user-configured-email)",
+        user_agent: str = "POE2CurrencyFlip/0.1 (contact: your-email@example.com)",
         raw_dir: Path | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")

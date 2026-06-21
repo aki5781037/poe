@@ -10,14 +10,19 @@ def fraction_to_decimal(value: Fraction) -> Decimal:
     return Decimal(value.numerator) / Decimal(value.denominator)
 
 
-def gold_cost_for(api_id: str, gold_config: dict) -> Decimal:
-    if api_id in gold_config:
-        return Decimal(str(gold_config[api_id]))
-    material = gold_config.get("materials", {}).get(api_id)
-    if isinstance(material, dict) and "gold_cost" in material:
-        return Decimal(str(material["gold_cost"]))
-    raise ScanError(f"未知金幣成本: {api_id}", phase="gold")
+def gold_cost_for(api_id: str, gold_config: dict) -> Decimal | None:
+    entry = gold_config.get(api_id)
+    if not isinstance(entry, dict):
+        return None
+    if not entry.get("source_url") or not entry.get("verified_at"):
+        return None
+    if "gold_cost" not in entry or entry["gold_cost"] is None:
+        return None
+    return Decimal(str(entry["gold_cost"]))
 
 
 def leg_gold_cost(received_amount: Fraction, receive_currency: str, gold_config: dict) -> Decimal:
-    return fraction_to_decimal(received_amount) * gold_cost_for(receive_currency, gold_config)
+    gold_cost = gold_cost_for(receive_currency, gold_config)
+    if gold_cost is None:
+        raise ScanError(f"未知金幣成本: {receive_currency}", phase="gold")
+    return fraction_to_decimal(received_amount) * gold_cost

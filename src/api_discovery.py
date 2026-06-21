@@ -80,6 +80,7 @@ def render_contract(spec: dict[str, Any]) -> str:
             "- `CurrencyOneData` and `CurrencyTwoData` are bound to the named sides returned by the API.",
             "- The code creates two directed edges per pair: `CurrencyOne -> CurrencyTwo` and `CurrencyTwo -> CurrencyOne`.",
             "- Direction is never inferred from numeric magnitude. It is recorded as `currency_one_to_two` or `currency_two_to_one` from the API side labels.",
+            "- `RelativePrice` is a relative value, not a direct exchange direction. For `source -> target`, derived amount is `paid_source * RelativePrice(source) / RelativePrice(target)`.",
             "- POE2 Scout snapshot data is historical aggregate data. It does not provide a live order book or a guaranteed directly executable integer order.",
             "",
             "## Realm、League、Currency Item ID 取得方法",

@@ -1,0 +1,28 @@
+divine:
+  api_id: divine
+  zh_hant_name: 神聖石
+  gold_cost: 800
+  source_url: https://www.pathofexile.com/trade2
+  verified_at: "2026-06-21"
+  verification_note: User-provided in project requirements; verify in-game before relying on it.
+exalted:
+  api_id: exalted
+  zh_hant_name: 崇高石
+  gold_cost: 120
+  source_url: https://www.pathofexile.com/trade2
+  verified_at: "2026-06-21"
+  verification_note: User-provided in project requirements; verify in-game before relying on it.
+chaos:
+  api_id: chaos
+  zh_hant_name: 混沌石
+  gold_cost: 160
+  source_url: https://www.pathofexile.com/trade2
+  verified_at: "2026-06-21"
+  verification_note: User-provided in project requirements; verify in-game before relying on it.
+annulment:
+  api_id: annulment
+  zh_hant_name: 無效石
+  gold_cost:
+  source_url:
+  verified_at:
+  verification_note: 未核對，不能進入正式利潤計算。

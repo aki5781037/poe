@@ -9,3 +9,4 @@ display_timezone: Asia/Shanghai
 realm: pc
 league: auto
 minimum_leg_volume_multiplier: 3
+slippage_buffer_percent: 0

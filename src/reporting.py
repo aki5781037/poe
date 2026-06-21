@@ -27,6 +27,7 @@ def render_markdown(result: ScanResult, names: dict[str, str]) -> str:
     lines = [
         "# POE2 通貨套利候選報告",
         "",
+        f"- 狀態: `{result.status}`",
         f"- Realm: `{result.realm}`",
         f"- League: `{result.league}`",
         f"- 數據 epoch: `{result.epoch if result.epoch is not None else '未知'}`",
@@ -34,10 +35,21 @@ def render_markdown(result: ScanResult, names: dict[str, str]) -> str:
         f"- 數據時間 Asia/Shanghai: `{result.snapshot_local.isoformat() if result.snapshot_local else '未知'}`",
         f"- 報告生成時間: `{result.generated_at.isoformat()}`",
         f"- 數據延遲分鐘數: `{fmt_decimal(result.age_minutes)}`",
+        f"- max_snapshot_age_minutes: `{result.max_snapshot_age_minutes if result.max_snapshot_age_minutes is not None else '未知'}`",
+        f"- 原始數據是否已保存: `{'是' if result.raw_saved else '否'}`",
         "",
         f"> {WARNING}",
         "",
     ]
+    if result.status == "數據過期 / 本次未計算套利":
+        lines.extend(
+            [
+                "## 數據過期 / 本次未計算套利",
+                "",
+                "POE2 Scout 快照已超過允許延遲，本次不計算策略、不生成候選、不計算利潤。",
+            ]
+        )
+        return "\n".join(lines) + "\n"
     if result.errors:
         lines.extend(["## 錯誤", ""])
         for error in result.errors:
@@ -91,7 +103,7 @@ def _candidate_lines(candidate: Candidate, names: dict[str, str]) -> list[str]:
             f"我需要: {names[leg.edge.receive_currency]}；"
             f"支付數量: {fmt_fraction(leg.pay_quantity)}；"
             f"取得數量: {fmt_fraction(leg.receive_quantity)}；"
-            f"保守比例: {fmt_decimal(leg.edge.conservative_rate)}；"
+            f"歷史推導比率: {fmt_decimal(leg.edge.implied_exchange_rate)}；"
             f"金幣: {fmt_decimal(leg.gold_cost)}"
         )
     if candidate.legs:
@@ -118,6 +130,9 @@ def result_to_jsonable(result: ScanResult) -> dict:
         "age_minutes": str(result.age_minutes) if result.age_minutes is not None else None,
         "warnings": list(result.warnings),
         "errors": list(result.errors),
+        "status": result.status,
+        "max_snapshot_age_minutes": result.max_snapshot_age_minutes,
+        "raw_saved": result.raw_saved,
         "excluded_count": result.excluded_count,
         "candidates": [
             {

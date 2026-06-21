@@ -14,7 +14,7 @@ def _edge(payment: str, receive: str, pay: int, got: int) -> TradeEdge:
         epoch=1,
         historical_volume=1,
         stock_value=1,
-        conservative_rate=1,
+        implied_exchange_rate=1,
         gold_cost_per_received_unit=1,
         pair_id=1,
         exact_integer_ratio=True,

@@ -9,7 +9,7 @@ from src.reporting import render_markdown
 def test_formal_markdown_uses_mapped_traditional_chinese_names():
     names = {"exalted": "崇高石", "mat": "材料甲", "divine": "神聖石"}
     edge = TradeEdge("exalted", "mat", Fraction(1), Fraction(2), Direction.CURRENCY_ONE_TO_TWO, 1, Decimal("1"), Decimal("1"), Decimal("2"), Decimal("10"), 1)
-    edge2 = TradeEdge("mat", "divine", Fraction(2), Fraction(1), Direction.CURRENCY_ONE_TO_TWO, 1, Decimal("1"), Decimal("1"), Decimal("1"), Decimal("800"), 2)
+    edge2 = TradeEdge("mat", "divine", Fraction(2), Fraction(1), Direction.CURRENCY_ONE_TO_TWO, 1, Decimal("1"), Decimal("1"), Decimal("0.5"), Decimal("800"), 2)
     candidate = Candidate(
         status=CandidateStatus.NEEDS_IN_GAME_VERIFICATION,
         start_currency="exalted",

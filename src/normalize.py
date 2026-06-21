@@ -6,8 +6,8 @@ from fractions import Fraction
 from math import gcd
 from zoneinfo import ZoneInfo
 
-from .models import Direction, ScanError, SnapshotPair, TradeEdge
 from .gold import gold_cost_for
+from .models import Direction, ScanError, SnapshotPair, StaleSnapshotError, TradeEdge
 
 
 def epoch_to_datetimes(epoch: int, timezone_name: str) -> tuple[datetime, datetime]:
@@ -24,9 +24,10 @@ def snapshot_age_minutes(epoch: int, now: datetime) -> Decimal:
 def ensure_fresh(epoch: int, now: datetime, max_age_minutes: int) -> Decimal:
     age = snapshot_age_minutes(epoch, now)
     if age > Decimal(max_age_minutes):
-        raise ScanError(
+        raise StaleSnapshotError(
             f"快照過期: age_minutes={age:.2f}, max_snapshot_age_minutes={max_age_minutes}",
-            phase="staleness",
+            age_minutes=age,
+            max_snapshot_age_minutes=max_age_minutes,
         )
     return age
 
@@ -55,33 +56,39 @@ def minimum_cycle_input(edges: list[TradeEdge]) -> Fraction | None:
     raise ScanError("無法在上限內找到最小完整整數循環", phase="integer_orders")
 
 
-def build_edges(pair: SnapshotPair, epoch: int, gold_config: dict) -> list[TradeEdge]:
+def build_edges(pair: SnapshotPair, epoch: int, market_reference: dict, slippage_buffer_percent: Decimal = Decimal("0")) -> list[TradeEdge]:
     one = pair.CurrencyOne.ApiId
     two = pair.CurrencyTwo.ApiId
     if pair.CurrencyOneData.RelativePrice <= 0 or pair.CurrencyTwoData.RelativePrice <= 0:
-        raise ScanError(f"未知比例方向或非正相對價格: pair_id={pair.CurrencyExchangeSnapshotPairId}", phase="normalize")
+        return []
 
     edges: list[TradeEdge] = []
+    buffer_multiplier = Decimal("1") - (slippage_buffer_percent / Decimal("100"))
+    if buffer_multiplier <= 0:
+        raise ScanError("slippage_buffer_percent 必須小於 100", phase="config")
     pairs = [
         (
             one,
             two,
-            pair.CurrencyOneData,
+            pair.CurrencyTwoData.RelativePrice,
+            pair.CurrencyOneData.RelativePrice,
             pair.CurrencyTwoData,
             Direction.CURRENCY_ONE_TO_TWO,
         ),
         (
             two,
             one,
-            pair.CurrencyTwoData,
+            pair.CurrencyOneData.RelativePrice,
+            pair.CurrencyTwoData.RelativePrice,
             pair.CurrencyOneData,
             Direction.CURRENCY_TWO_TO_ONE,
         ),
     ]
-    for payment, receive, pay_data, receive_data, direction in pairs:
-        gold_cost = gold_cost_for(receive, gold_config)
-        pay_amount = decimal_to_fraction(pay_data.RelativePrice)
-        receive_amount = decimal_to_fraction(receive_data.RelativePrice)
+    for payment, receive, pay_price, receive_price, receive_data, direction in pairs:
+        gold_cost = gold_cost_for(receive, market_reference)
+        pay_amount = decimal_to_fraction(pay_price)
+        receive_amount = decimal_to_fraction(receive_price * buffer_multiplier)
+        implied_rate = (receive_price * buffer_multiplier) / pay_price
         edges.append(
             TradeEdge(
                 payment_currency=payment,
@@ -92,7 +99,7 @@ def build_edges(pair: SnapshotPair, epoch: int, gold_config: dict) -> list[Trade
                 epoch=epoch,
                 historical_volume=receive_data.ValueTraded,
                 stock_value=receive_data.StockValue,
-                conservative_rate=receive_data.RelativePrice,
+                implied_exchange_rate=implied_rate,
                 gold_cost_per_received_unit=gold_cost,
                 pair_id=pair.CurrencyExchangeSnapshotPairId,
                 exact_integer_ratio=False,

@@ -34,16 +34,27 @@ def _pair() -> SnapshotPair:
 
 
 def test_reverse_pair_uses_api_side_labels_not_numeric_guessing():
-    edges = build_edges(_pair(), 1000, {"exalted": 120, "divine": 800, "materials": {}})
+    market_reference = {
+        "exalted": {
+            "gold_cost": 120,
+            "source_url": "https://example.com",
+            "verified_at": "2026-06-21",
+        },
+        "divine": {
+            "gold_cost": 800,
+            "source_url": "https://example.com",
+            "verified_at": "2026-06-21",
+        },
+    }
+    edges = build_edges(_pair(), 1000, market_reference)
     forward = next(edge for edge in edges if edge.payment_currency == "exalted")
     reverse = next(edge for edge in edges if edge.payment_currency == "divine")
 
     assert forward.receive_currency == "divine"
     assert forward.ratio_direction == Direction.CURRENCY_ONE_TO_TWO
-    assert forward.pay_amount == Fraction(10, 1)
-    assert forward.receive_amount == Fraction(1, 1)
+    assert forward.receive_amount / forward.pay_amount == Fraction(10, 1)
     assert reverse.receive_currency == "exalted"
     assert reverse.ratio_direction == Direction.CURRENCY_TWO_TO_ONE
-    assert reverse.pay_amount == Fraction(1, 1)
-    assert reverse.receive_amount == Fraction(10, 1)
-    assert forward.conservative_rate == Decimal("1")
+    assert reverse.receive_amount / reverse.pay_amount == Fraction(1, 10)
+    assert (forward.receive_amount / forward.pay_amount) * (reverse.receive_amount / reverse.pay_amount) == 1
+    assert forward.implied_exchange_rate == Decimal("10")

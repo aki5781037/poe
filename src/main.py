@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import yaml
 
 from .api_discovery import write_contract
-from .models import ScanError, ScanResult
-from .normalize import build_edges, epoch_to_datetimes, snapshot_age_minutes
+from .models import ScanError, ScanResult, StaleSnapshotError
+from .normalize import build_edges, ensure_fresh, epoch_to_datetimes, snapshot_age_minutes
 from .reporting import WARNING, write_reports
 from .scout_client import ScoutClient, resolve_league
 from .strategy import evaluate_candidates
+from .unmapped import collect_unmapped, write_unmapped_report
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,12 +35,12 @@ def run(root: Path = ROOT) -> int:
     strategy_config = load_yaml(config_dir / "strategy.yml")
     portfolio_config = load_yaml(config_dir / "portfolio.yml")
     routing_config = load_yaml(config_dir / "routing.yml")
-    gold_config = load_yaml(config_dir / "gold.yml")
+    market_reference = load_yaml(config_dir / "market-reference.yml")
     names = load_yaml(config_dir / "names.zh-Hant.yml")
     realm = str(strategy_config["realm"])
     configured_league = str(strategy_config["league"])
     client = ScoutClient(
-        user_agent=os.getenv("POE2_SCOUT_USER_AGENT", "POE2CurrencyFlip/0.1 (contact: user-configured-email)"),
+        user_agent=os.getenv("POE2_SCOUT_USER_AGENT", "POE2CurrencyFlip/0.1 (contact: your-email@example.com)"),
         raw_dir=raw_dir,
     )
     try:
@@ -48,12 +50,42 @@ def run(root: Path = ROOT) -> int:
         league = resolve_league(configured_league, leagues)
         snapshot = client.exchange_snapshot(realm, league)
         pairs = client.snapshot_pairs(realm, league)
+        write_unmapped_report(
+            collect_unmapped(pairs, names, market_reference),
+            reports_dir / "unmapped-currencies.md",
+        )
+        utc_time, local_time = epoch_to_datetimes(snapshot.Epoch, strategy_config["display_timezone"])
+        raw_saved = raw_dir.exists() and any(raw_dir.glob("*.json"))
+        try:
+            age = ensure_fresh(snapshot.Epoch, generated_at, int(strategy_config["max_snapshot_age_minutes"]))
+        except StaleSnapshotError as exc:
+            result = ScanResult(
+                realm=realm,
+                league=league,
+                epoch=snapshot.Epoch,
+                generated_at=generated_at,
+                snapshot_utc=utc_time,
+                snapshot_local=local_time,
+                age_minutes=exc.age_minutes,
+                candidates=(),
+                excluded_count=0,
+                warnings=(WARNING,),
+                status="數據過期 / 本次未計算套利",
+                max_snapshot_age_minutes=exc.max_snapshot_age_minutes,
+                raw_saved=raw_saved,
+            )
+            write_reports(result, names, reports_dir)
+            return 0
         edges = []
         for pair in pairs:
-            try:
-                edges.extend(build_edges(pair, snapshot.Epoch, gold_config))
-            except ScanError:
-                continue
+            edges.extend(
+                build_edges(
+                    pair,
+                    snapshot.Epoch,
+                    market_reference,
+                    Decimal(str(strategy_config.get("slippage_buffer_percent", 0))),
+                )
+            )
         candidates, excluded_count, age, utc_time, local_time = evaluate_candidates(
             edges=edges,
             epoch=snapshot.Epoch,
@@ -61,7 +93,7 @@ def run(root: Path = ROOT) -> int:
             strategy_config=strategy_config,
             portfolio_config=portfolio_config,
             routing_config=routing_config,
-            gold_config=gold_config,
+            gold_config=market_reference,
             names=names,
         )
         result = ScanResult(
@@ -75,6 +107,9 @@ def run(root: Path = ROOT) -> int:
             candidates=tuple(candidates),
             excluded_count=excluded_count,
             warnings=(WARNING,),
+            status="ok",
+            max_snapshot_age_minutes=int(strategy_config["max_snapshot_age_minutes"]),
+            raw_saved=raw_saved,
         )
         write_reports(result, names, reports_dir)
         return 0
@@ -102,6 +137,9 @@ def run(root: Path = ROOT) -> int:
             excluded_count=0,
             warnings=(WARNING,),
             errors=(f"階段={exc.phase}; {exc}",),
+            status="error",
+            max_snapshot_age_minutes=int(strategy_config["max_snapshot_age_minutes"]) if "strategy_config" in locals() else None,
+            raw_saved=raw_dir.exists() and any(raw_dir.glob("*.json")),
         )
         write_reports(result, names, reports_dir)
         print(f"scan failed: phase={exc.phase}; {exc}")

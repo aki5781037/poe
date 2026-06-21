@@ -15,6 +15,13 @@ class ScanError(RuntimeError):
         self.phase = phase
 
 
+class StaleSnapshotError(ScanError):
+    def __init__(self, message: str, *, age_minutes: Decimal, max_snapshot_age_minutes: int) -> None:
+        super().__init__(message, phase="staleness")
+        self.age_minutes = age_minutes
+        self.max_snapshot_age_minutes = max_snapshot_age_minutes
+
+
 class CandidateStatus(StrEnum):
     NEEDS_IN_GAME_VERIFICATION = "需要遊戲內驗證"
     WATCH = "觀察候選"
@@ -118,8 +125,8 @@ class TradeEdge:
     epoch: int
     historical_volume: Decimal
     stock_value: Decimal
-    conservative_rate: Decimal
-    gold_cost_per_received_unit: Decimal
+    implied_exchange_rate: Decimal
+    gold_cost_per_received_unit: Decimal | None
     pair_id: int
     exact_integer_ratio: bool = False
 
@@ -169,3 +176,6 @@ class ScanResult:
     excluded_count: int
     warnings: tuple[str, ...]
     errors: tuple[str, ...] = ()
+    status: str = "ok"
+    max_snapshot_age_minutes: int | None = None
+    raw_saved: bool = False

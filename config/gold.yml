@@ -1,11 +1,11 @@
 divine: 800
 chaos: 160
 exalted: 120
-annulment: 120
+annulment:
 materials:
   greater-essence-of-the-body:
-    gold_cost: 120
+    gold_cost:
   greater-essence-of-the-mind:
-    gold_cost: 120
+    gold_cost:
   greater-essence-of-enhancement:
-    gold_cost: 120
+    gold_cost:

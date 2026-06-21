@@ -42,6 +42,12 @@ jobs:
           if [ "$code" -ne 0 ]; then
             echo "Scanner failed. See reports/latest.md for HTTP status, Content-Type, error summary, and API discovery phase. No environment variables are printed."
           fi
+          echo "===== reports/latest.md ====="
+          test -f reports/latest.md && cat reports/latest.md || true
+          echo "===== raw files ====="
+          find reports/raw -maxdepth 1 -type f -printf "%f\n" 2>/dev/null || true
+          echo "===== unmapped ====="
+          test -f reports/unmapped-currencies.md && sed -n '1,240p' reports/unmapped-currencies.md || true
           exit "$code"
 
       - name: Write Step Summary

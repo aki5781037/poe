@@ -6,8 +6,8 @@ from decimal import Decimal
 from fractions import Fraction
 
 from .gold import fraction_to_decimal, leg_gold_cost
-from .models import Candidate, CandidateStatus, LegResult, ScanError, TradeEdge
-from .normalize import ensure_fresh, epoch_to_datetimes
+from .models import Candidate, CandidateStatus, LegResult, TradeEdge
+from .normalize import epoch_to_datetimes
 
 
 def apply_edge(edge: TradeEdge, pay_quantity: Fraction, gold_config: dict) -> LegResult:
@@ -49,8 +49,8 @@ def evaluate_candidates(
     gold_config: dict,
     names: dict,
 ) -> tuple[list[Candidate], int, Decimal, datetime, datetime]:
-    age = ensure_fresh(epoch, now, int(strategy_config["max_snapshot_age_minutes"]))
     utc_time, local_time = epoch_to_datetimes(epoch, strategy_config["display_timezone"])
+    age = Decimal(str((now - utc_time).total_seconds())) / Decimal("60")
     target = routing_config["target_currency"]
     graph = build_graph(edges)
     candidates: list[Candidate] = []
@@ -73,6 +73,13 @@ def evaluate_candidates(
                 excluded_count += 1
                 continue
             if first.historical_volume <= 0 or second.historical_volume <= 0:
+                excluded_count += 1
+                continue
+            if (
+                first.gold_cost_per_received_unit is None
+                or second.gold_cost_per_received_unit is None
+                or benchmark.gold_cost_per_received_unit is None
+            ):
                 excluded_count += 1
                 continue
 

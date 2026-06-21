@@ -29,6 +29,7 @@ Discovery source: `GET /openapi.json` returned HTTP 200 JSON. `/swagger` also re
 - `CurrencyOneData` and `CurrencyTwoData` are bound to API side labels.
 - The scanner creates two directed edges per pair: `CurrencyOne -> CurrencyTwo` and `CurrencyTwo -> CurrencyOne`.
 - Direction is recorded as `currency_one_to_two` or `currency_two_to_one`; it is never inferred from numeric magnitude.
+- `RelativePrice` is a relative value, not a direct exchange direction. For `source -> target`, the derived amount is `paid_source * RelativePrice(source) / RelativePrice(target)`.
 - Snapshot data is historical aggregate data and does not prove live order availability or directly executable integer orders.
 
 ## Realm、League、Currency Item ID 取得方法
