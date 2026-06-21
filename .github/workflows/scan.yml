@@ -2,8 +2,6 @@ name: POE2 Currency Flip Scan
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "12 * * * *"
   push:
     branches:
       - codex/poe2-currency-flip
@@ -13,6 +11,8 @@ on:
       - "tests/**"
       - ".github/workflows/scan.yml"
       - "pyproject.toml"
+  schedule:
+    - cron: "12 * * * *"
 
 concurrency:
   group: poe2-currency-flip-scan
