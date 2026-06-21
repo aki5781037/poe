@@ -5,7 +5,8 @@ on:
   schedule:
     - cron: "12 * * * *"
   push:
-    branches: [main]
+    branches:
+      - codex/poe2-currency-flip
     paths:
       - "src/**"
       - "config/**"
