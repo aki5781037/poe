@@ -1,0 +1,13 @@
+{
+  "realm": "pc",
+  "league": "Mirage",
+  "epoch": 1782025200,
+  "generated_at": "2026-06-21T09:57:04.051785+00:00",
+  "snapshot_utc": "2026-06-21T07:00:00+00:00",
+  "snapshot_local": "2026-06-21T15:00:00+08:00",
+  "age_minutes": "177.06752975",
+  "status": "stale",
+  "errors": [],
+  "candidate_count": 0,
+  "candidates": []
+}
