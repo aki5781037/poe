@@ -6,6 +6,14 @@
 
 RelativePrice 是相对价值，不是直接兑换方向；路径计算必须使用 `source_price / target_price`。
 
+公開最新報告地址：
+https://raw.githubusercontent.com/aki5781037/poe/market-feed/latest.md
+
+公開狀態地址：
+https://raw.githubusercontent.com/aki5781037/poe/market-feed/status.json
+
+公開 feed 僅用於讀取市場候選，不包含個人資產、原始 API 數據或密鑰。
+
 ## 快速開始
 
 1. 在 GitHub 建立 Private Repository，將本專案推送到該私有倉庫。
@@ -49,9 +57,10 @@ POE2 Scout 的快照是已完成小時的歷史聚合數據，成交量只能作
 - 自動掃描：UTC 每小時第 12 分鐘執行：`12 * * * *`。
 - 掃描對象：上一完整小時的 POE2 Scout 歷史快照。
 - 手動運行僅用於立即檢查或調試，不代表當前遊戲內盤口。
-- push 觸發：只在 `main` 分支修改 scanner、config、tests、workflow 或 `pyproject.toml` 時運行一次測試。
+- push 觸發：只在 `codex/poe2-currency-flip` 分支修改 scanner、config、tests、workflow 或 `pyproject.toml` 時運行一次測試。
+- 掃描成功、無候選、API 錯誤或數據過期時，工作流會把脫敏公開 feed 發布到 `market-feed` 分支。
 - concurrency 防止重疊運行。
-- 最小權限：`contents: read`。
+- 最小發布權限：`contents: write`，用於更新 `market-feed` 分支。
 - 上傳 raw 響應與報告為 Artifact，保存 14 天。
 - 將 `latest.md` 寫入 GitHub Step Summary。
 

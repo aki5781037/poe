@@ -119,6 +119,98 @@ def _candidate_lines(candidate: Candidate, names: dict[str, str]) -> list[str]:
     return lines
 
 
+def public_status_value(result: ScanResult) -> str:
+    if result.status == "數據過期 / 本次未計算套利":
+        return "stale"
+    if result.errors:
+        return "api_error"
+    if not result.candidates:
+        return "no_candidates"
+    return "fresh"
+
+
+def render_public_markdown(result: ScanResult, names: dict[str, str]) -> str:
+    lines = [
+        "# POE2 通貨市場候選公開報告",
+        "",
+        f"- 狀態: `{public_status_value(result)}`",
+        f"- Realm: `{result.realm}`",
+        f"- League: `{result.league}`",
+        f"- 數據 epoch: `{result.epoch if result.epoch is not None else '未知'}`",
+        f"- 數據時間 UTC: `{result.snapshot_utc.isoformat() if result.snapshot_utc else '未知'}`",
+        f"- 數據時間 Asia/Shanghai: `{result.snapshot_local.isoformat() if result.snapshot_local else '未知'}`",
+        f"- 報告生成時間: `{result.generated_at.isoformat()}`",
+        f"- 數據延遲分鐘數: `{fmt_decimal(result.age_minutes)}`",
+        "",
+        f"> {WARNING}",
+        "",
+    ]
+    if result.status == "數據過期 / 本次未計算套利":
+        lines.extend(
+            [
+                "## 數據過期 / 本次未計算套利",
+                "",
+                "POE2 Scout 快照已超過允許延遲，本次不計算策略、不生成候選、不計算利潤。",
+            ]
+        )
+        return "\n".join(lines) + "\n"
+    if result.errors:
+        lines.extend(["## API 錯誤", ""])
+        for error in result.errors:
+            lines.append(f"- {_redact_public_error(error)}")
+        return "\n".join(lines) + "\n"
+    if not result.candidates:
+        lines.append("本小時沒有符合條件的歷史候選。")
+        return "\n".join(lines) + "\n"
+    for candidate in result.candidates:
+        lines.extend(_public_candidate_lines(candidate, names))
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _public_candidate_lines(candidate: Candidate, names: dict[str, str]) -> list[str]:
+    route = " → ".join(names[part] for part in candidate.route)
+    lines = [
+        f"## {route}",
+        "",
+        f"- 狀態: {candidate.status.value}",
+        f"- 是否可立即下單: 否",
+        f"- 數據 epoch: `{candidate.epoch}`",
+        f"- UTC 時間: `{candidate.utc_time.isoformat()}`",
+        f"- Asia/Shanghai 時間: `{candidate.local_time.isoformat()}`",
+        f"- 數據延遲: {fmt_decimal(candidate.age_minutes)} 分鐘",
+        f"- 歷史利潤率: {fmt_decimal(candidate.profit_percent * Decimal('100'))}%",
+        f"- 每賺 1 枚神聖石消耗金幣: {fmt_decimal(candidate.gold_per_divine_profit)}",
+        f"- 每 10 萬金幣可產生的神聖石等值利潤: {fmt_decimal(candidate.divine_profit_per_100k_gold)}",
+        f"- 風險提示: {' / '.join(candidate.risk_tags)}",
+        "",
+        "每一步：",
+    ]
+    for leg in candidate.legs:
+        lines.append(
+            "- "
+            f"我擁有: {names[leg.edge.payment_currency]}；"
+            f"我需要: {names[leg.edge.receive_currency]}；"
+            f"歷史推導比率: {fmt_decimal(leg.edge.implied_exchange_rate)}；"
+            f"取得該物品的單位金幣成本: {fmt_decimal(leg.edge.gold_cost_per_received_unit)}"
+        )
+    if candidate.legs:
+        first, second = candidate.legs
+        lines.extend(
+            [
+                "",
+                "遊戲內複核閾值：",
+                f"1. 我需要：{names[first.edge.receive_currency]}；我擁有：{names[first.edge.payment_currency]}。依遊戲內可用交易複核買入成本。",
+                f"2. 我需要：{names[second.edge.receive_currency]}；我擁有：{names[second.edge.payment_currency]}。依遊戲內可用交易複核賣出收益。",
+            ]
+        )
+    return lines
+
+
+def _redact_public_error(error: str) -> str:
+    return error.replace("POE2CurrencyFlip/0.1 (contact: your-email@example.com)", "POE2CurrencyFlip/0.1")
+
+
 def result_to_jsonable(result: ScanResult) -> dict:
     return {
         "realm": result.realm,
@@ -151,10 +243,64 @@ def result_to_jsonable(result: ScanResult) -> dict:
     }
 
 
+def public_result_to_jsonable(result: ScanResult, names: dict[str, str]) -> dict:
+    return {
+        "realm": result.realm,
+        "league": result.league,
+        "epoch": result.epoch,
+        "generated_at": result.generated_at.isoformat(),
+        "snapshot_utc": result.snapshot_utc.isoformat() if result.snapshot_utc else None,
+        "snapshot_local": result.snapshot_local.isoformat() if result.snapshot_local else None,
+        "age_minutes": str(result.age_minutes) if result.age_minutes is not None else None,
+        "status": public_status_value(result),
+        "errors": [_redact_public_error(error) for error in result.errors],
+        "candidate_count": len(result.candidates),
+        "candidates": [
+            {
+                "status": candidate.status.value,
+                "route": [candidate_route_name(part, names) for part in candidate.route],
+                "profit_percent": str(candidate.profit_percent),
+                "gold_per_divine_profit": str(candidate.gold_per_divine_profit) if candidate.gold_per_divine_profit is not None else None,
+                "divine_profit_per_100k_gold": str(candidate.divine_profit_per_100k_gold) if candidate.divine_profit_per_100k_gold is not None else None,
+                "risk_tags": list(candidate.risk_tags),
+            }
+            for candidate in result.candidates
+        ],
+    }
+
+
+def candidate_route_name(api_id: str, names: dict[str, str]) -> str:
+    return names.get(api_id, api_id)
+
+
+def status_jsonable(result: ScanResult) -> dict:
+    return {
+        "generated_at_utc": result.generated_at.isoformat(),
+        "snapshot_epoch": str(result.epoch) if result.epoch is not None else None,
+        "snapshot_time_utc": result.snapshot_utc.isoformat() if result.snapshot_utc else None,
+        "snapshot_time_asia_shanghai": result.snapshot_local.isoformat() if result.snapshot_local else None,
+        "snapshot_age_minutes": float(result.age_minutes) if result.age_minutes is not None else None,
+        "status": public_status_value(result),
+        "candidate_count": len(result.candidates),
+    }
+
+
 def write_reports(result: ScanResult, names: dict[str, str], reports_dir: Path) -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
     (reports_dir / "latest.md").write_text(render_markdown(result, names), encoding="utf-8")
     (reports_dir / "latest.json").write_text(
         json.dumps(result_to_jsonable(result), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    public_dir = reports_dir / "public"
+    public_dir.mkdir(parents=True, exist_ok=True)
+    (public_dir / "latest.md").write_text(render_public_markdown(result, names), encoding="utf-8")
+    public_json = public_result_to_jsonable(result, names)
+    (public_dir / "latest.json").write_text(
+        json.dumps(public_json, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (public_dir / "status.json").write_text(
+        json.dumps(status_jsonable(result), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )

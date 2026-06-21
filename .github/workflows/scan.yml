@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   scan:
@@ -48,6 +48,7 @@ jobs:
           set +e
           python -m src.main
           code=$?
+          echo "$code" > "$RUNNER_TEMP/scan_exit_code"
           if [ "$code" -ne 0 ]; then
             echo "Scanner failed. See reports/latest.md for HTTP status, Content-Type, error summary, and API discovery phase. No environment variables are printed."
           fi
@@ -57,7 +58,7 @@ jobs:
           find reports/raw -maxdepth 1 -type f -printf "%f\n" 2>/dev/null || true
           echo "===== unmapped ====="
           test -f reports/unmapped-currencies.md && sed -n '1,240p' reports/unmapped-currencies.md || true
-          exit "$code"
+          exit 0
 
       - name: Write Step Summary
         if: always()
@@ -77,3 +78,51 @@ jobs:
             reports/**
             docs/api-contract.md
           retention-days: 14
+
+      - name: Publish market feed
+        if: always()
+        run: |
+          set -euo pipefail
+          test -f reports/public/latest.md
+          test -f reports/public/latest.json
+          test -f reports/public/status.json
+
+          publish_dir="$(mktemp -d)"
+          cp reports/public/latest.md "$publish_dir/latest.md"
+          cp reports/public/latest.json "$publish_dir/latest.json"
+          cp reports/public/status.json "$publish_dir/status.json"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin market-feed >/dev/null 2>&1; then
+            git fetch origin market-feed
+            git checkout market-feed
+            git reset --hard origin/market-feed
+          else
+            git checkout --orphan market-feed
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          find . -mindepth 1 -maxdepth 1 \
+            ! -path './.git' \
+            ! -path './.git/*' \
+            -exec rm -rf {} +
+          cp "$publish_dir/latest.md" latest.md
+          cp "$publish_dir/latest.json" latest.json
+          cp "$publish_dir/status.json" status.json
+          git add latest.md latest.json status.json
+
+          if git diff --cached --quiet; then
+            echo "market-feed unchanged"
+          else
+            timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            git commit -m "chore: update market feed $timestamp"
+            git push origin HEAD:market-feed
+          fi
+
+      - name: Fail if scanner failed
+        if: always()
+        run: |
+          code="$(cat "$RUNNER_TEMP/scan_exit_code" 2>/dev/null || echo 1)"
+          exit "$code"
