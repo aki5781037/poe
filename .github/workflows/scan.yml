@@ -41,9 +41,17 @@ jobs:
       - name: Run tests
         run: pytest
 
+      - name: Read previous market status
+        run: |
+          set +e
+          git fetch origin market-feed --depth=1
+          git show FETCH_HEAD:status.json > "$RUNNER_TEMP/previous_market_status.json" 2>/dev/null || true
+          test -s "$RUNNER_TEMP/previous_market_status.json" || echo "{}" > "$RUNNER_TEMP/previous_market_status.json"
+
       - name: Run scanner
         env:
           POE2_SCOUT_USER_AGENT: "POE2CurrencyFlip/0.1 (contact: your-email@example.com)"
+          PREVIOUS_MARKET_STATUS: ${{ runner.temp }}/previous_market_status.json
         run: |
           set +e
           python -m src.main

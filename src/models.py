@@ -179,3 +179,5 @@ class ScanResult:
     status: str = "ok"
     max_snapshot_age_minutes: int | None = None
     raw_saved: bool = False
+    stale_epoch_history: tuple[str, ...] = ()
+    source_delay_alert: bool = False

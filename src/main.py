@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -27,6 +28,38 @@ def load_yaml(path: Path) -> dict:
     return data
 
 
+def load_previous_status() -> dict:
+    path = os.getenv("PREVIOUS_MARKET_STATUS")
+    if not path:
+        return {}
+    status_path = Path(path)
+    if not status_path.exists():
+        return {}
+    try:
+        data = json.loads(status_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def stale_context(current_epoch: int | None, previous_status: dict) -> tuple[tuple[str, ...], bool]:
+    current = str(current_epoch) if current_epoch is not None else None
+    if current is None:
+        return (), False
+    previous_was_stale = previous_status.get("status") == "stale"
+    prior_epochs = previous_status.get("stale_epoch_history")
+    if not isinstance(prior_epochs, list):
+        prior_epochs = []
+    if previous_was_stale and not prior_epochs:
+        previous_epoch = previous_status.get("snapshot_epoch")
+        if previous_epoch is not None:
+            prior_epochs.append(str(previous_epoch))
+    history = [str(epoch) for epoch in prior_epochs if epoch is not None]
+    history.append(current)
+    recent = tuple(history[-3:])
+    return recent, previous_was_stale and len(recent) >= 2
+
+
 def run(root: Path = ROOT) -> int:
     generated_at = datetime.now(tz=UTC)
     config_dir = root / "config"
@@ -37,6 +70,7 @@ def run(root: Path = ROOT) -> int:
     routing_config = load_yaml(config_dir / "routing.yml")
     market_reference = load_yaml(config_dir / "market-reference.yml")
     names = load_yaml(config_dir / "names.zh-Hant.yml")
+    previous_status = load_previous_status()
     realm = str(strategy_config["realm"])
     configured_league = str(strategy_config["league"])
     client = ScoutClient(
@@ -59,6 +93,7 @@ def run(root: Path = ROOT) -> int:
         try:
             age = ensure_fresh(snapshot.Epoch, generated_at, int(strategy_config["max_snapshot_age_minutes"]))
         except StaleSnapshotError as exc:
+            stale_epochs, source_delay_alert = stale_context(snapshot.Epoch, previous_status)
             result = ScanResult(
                 realm=realm,
                 league=league,
@@ -73,6 +108,8 @@ def run(root: Path = ROOT) -> int:
                 status="數據過期 / 本次未計算套利",
                 max_snapshot_age_minutes=exc.max_snapshot_age_minutes,
                 raw_saved=raw_saved,
+                stale_epoch_history=stale_epochs,
+                source_delay_alert=source_delay_alert,
             )
             write_reports(result, names, reports_dir)
             return 0
@@ -110,6 +147,8 @@ def run(root: Path = ROOT) -> int:
             status="ok",
             max_snapshot_age_minutes=int(strategy_config["max_snapshot_age_minutes"]),
             raw_saved=raw_saved,
+            stale_epoch_history=(),
+            source_delay_alert=False,
         )
         write_reports(result, names, reports_dir)
         return 0
@@ -140,6 +179,8 @@ def run(root: Path = ROOT) -> int:
             status="error",
             max_snapshot_age_minutes=int(strategy_config["max_snapshot_age_minutes"]) if "strategy_config" in locals() else None,
             raw_saved=raw_dir.exists() and any(raw_dir.glob("*.json")),
+            stale_epoch_history=(),
+            source_delay_alert=False,
         )
         write_reports(result, names, reports_dir)
         print(f"scan failed: phase={exc.phase}; {exc}")

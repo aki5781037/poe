@@ -49,6 +49,15 @@ def render_markdown(result: ScanResult, names: dict[str, str]) -> str:
                 "POE2 Scout 快照已超過允許延遲，本次不計算策略、不生成候選、不計算利潤。",
             ]
         )
+        if result.source_delay_alert:
+            lines.extend(
+                [
+                    "",
+                    "## Scout 數據源未刷新",
+                    "",
+                    f"連續兩次掃描結果為 stale。最近 epoch: {', '.join(result.stale_epoch_history)}",
+                ]
+            )
         return "\n".join(lines) + "\n"
     if result.errors:
         lines.extend(["## 錯誤", ""])
@@ -153,6 +162,15 @@ def render_public_markdown(result: ScanResult, names: dict[str, str]) -> str:
                 "POE2 Scout 快照已超過允許延遲，本次不計算策略、不生成候選、不計算利潤。",
             ]
         )
+        if result.source_delay_alert:
+            lines.extend(
+                [
+                    "",
+                    "## Scout 數據源未刷新",
+                    "",
+                    f"連續兩次掃描結果為 stale。最近 epoch: {', '.join(result.stale_epoch_history)}",
+                ]
+            )
         return "\n".join(lines) + "\n"
     if result.errors:
         lines.extend(["## API 錯誤", ""])
@@ -225,6 +243,8 @@ def result_to_jsonable(result: ScanResult) -> dict:
         "status": result.status,
         "max_snapshot_age_minutes": result.max_snapshot_age_minutes,
         "raw_saved": result.raw_saved,
+        "stale_epoch_history": list(result.stale_epoch_history),
+        "source_delay_alert": result.source_delay_alert,
         "excluded_count": result.excluded_count,
         "candidates": [
             {
@@ -255,6 +275,8 @@ def public_result_to_jsonable(result: ScanResult, names: dict[str, str]) -> dict
         "status": public_status_value(result),
         "errors": [_redact_public_error(error) for error in result.errors],
         "candidate_count": len(result.candidates),
+        "stale_epoch_history": list(result.stale_epoch_history),
+        "source_delay_alert": result.source_delay_alert,
         "candidates": [
             {
                 "status": candidate.status.value,
@@ -282,6 +304,8 @@ def status_jsonable(result: ScanResult) -> dict:
         "snapshot_age_minutes": float(result.age_minutes) if result.age_minutes is not None else None,
         "status": public_status_value(result),
         "candidate_count": len(result.candidates),
+        "stale_epoch_history": list(result.stale_epoch_history),
+        "source_delay_alert": result.source_delay_alert,
     }
 
 
