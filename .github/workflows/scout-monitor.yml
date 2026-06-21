@@ -187,6 +187,38 @@ jobs:
                   raise SystemExit(f"unexpected dispatch status: {response.status}")
           PY
 
+      - name: Notify Miaotixing when Scout updates
+        if: steps.check.outputs.updated == 'true'
+        env:
+          MIAOTIXING_CODE: ${{ secrets.MIAOTIXING_CODE }}
+        run: |
+          set +e
+          if [ -z "$MIAOTIXING_CODE" ]; then
+            echo "MIAOTIXING_CODE secret is not configured; skip notification."
+            exit 0
+          fi
+          snapshot_time="$(python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          data = json.loads(Path(os.environ["RUNNER_TEMP"], "scout-monitor.json").read_text(encoding="utf-8"))
+          print(data.get("snapshot_time_asia_shanghai") or data.get("snapshot_time_utc") or "unknown")
+          PY
+          )"
+          text="POE2 Scout has new data: ${snapshot_time}. Full scan has been triggered."
+          curl -fsS -G "https://miaotixing.com/trigger" \
+            --data-urlencode "id=${MIAOTIXING_CODE}" \
+            --data-urlencode "text=${text}" \
+            --max-time 20 \
+            --output "$RUNNER_TEMP/miaotixing-response.txt"
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            echo "Miaotixing notification failed with curl exit code $code."
+            exit 0
+          fi
+          echo "Miaotixing notification sent."
+
       - name: Build monitor public feed
         if: steps.check.outputs.updated != 'true' && (steps.check.outputs.api_error == 'true' || steps.check.outputs.stale == 'true')
         run: |
