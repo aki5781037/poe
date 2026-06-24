@@ -1,33 +1,17 @@
 {
   "realm": "pc",
   "league": "Mirage",
-  "epoch": 1782327600,
-  "generated_at": "2026-06-24T20:04:42.729777+00:00",
-  "snapshot_utc": "2026-06-24T19:00:00+00:00",
-  "snapshot_local": "2026-06-25T03:00:00+08:00",
-  "age_minutes": "64.71216295",
-  "status": "fresh",
+  "epoch": 1782331200,
+  "generated_at": "2026-06-24T21:43:13.221576+00:00",
+  "snapshot_utc": "2026-06-24T20:00:00+00:00",
+  "snapshot_local": "2026-06-25T04:00:00+08:00",
+  "age_minutes": "103.2203596",
+  "status": "stale",
   "errors": [],
-  "candidate_count": 1,
-  "stale_epoch_history": [],
+  "candidate_count": 0,
+  "stale_epoch_history": [
+    "1782331200"
+  ],
   "source_delay_alert": false,
-  "candidates": [
-    {
-      "status": "觀察候選",
-      "route": [
-        "混沌石",
-        "崇高石",
-        "神聖石"
-      ],
-      "profit_percent": "1.487245750718737113919700199",
-      "gold_per_divine_profit": "24232.57801957045416462198206",
-      "divine_profit_per_100k_gold": "4.126676077107399591604640170",
-      "risk_tags": [
-        "歷史候選",
-        "需要遊戲內驗證",
-        "訂單比例未知",
-        "缺少起始通貨"
-      ]
-    }
-  ]
+  "candidates": []
 }
