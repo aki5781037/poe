@@ -1,18 +1,18 @@
 {
   "realm": "pc",
   "league": "Mirage",
-  "epoch": 1782356400,
-  "generated_at": "2026-06-25T04:22:11.418875+00:00",
-  "snapshot_utc": "2026-06-25T03:00:00+00:00",
-  "snapshot_local": "2026-06-25T11:00:00+08:00",
-  "age_minutes": "82.19031458333333333333333333",
+  "epoch": 1782370800,
+  "generated_at": "2026-06-25T08:30:53.265780+00:00",
+  "snapshot_utc": "2026-06-25T07:00:00+00:00",
+  "snapshot_local": "2026-06-25T15:00:00+08:00",
+  "age_minutes": "90.887763",
   "status": "stale",
   "errors": [],
   "candidate_count": 0,
   "stale_epoch_history": [
-    "1782331200",
     "1782338400",
-    "1782356400"
+    "1782356400",
+    "1782370800"
   ],
   "source_delay_alert": true,
   "candidates": []
