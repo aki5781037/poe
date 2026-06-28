@@ -1,15 +1,15 @@
 {
-  "generated_at_utc": "2026-06-28T20:36:15.425406+00:00",
-  "snapshot_epoch": "1782673200",
-  "snapshot_time_utc": "2026-06-28T19:00:00+00:00",
-  "snapshot_time_asia_shanghai": "2026-06-29T03:00:00+08:00",
-  "snapshot_age_minutes": 96.2570901,
+  "generated_at_utc": "2026-06-28T22:13:36.028623+00:00",
+  "snapshot_epoch": "1782680400",
+  "snapshot_time_utc": "2026-06-28T21:00:00+00:00",
+  "snapshot_time_asia_shanghai": "2026-06-29T05:00:00+08:00",
+  "snapshot_age_minutes": 73.60047705,
   "status": "stale",
   "candidate_count": 0,
   "stale_epoch_history": [
-    "1782658800",
     "1782666000",
-    "1782673200"
+    "1782673200",
+    "1782680400"
   ],
   "source_delay_alert": true
 }
