@@ -1,19 +1,34 @@
 {
   "realm": "pc",
   "league": "Mirage",
-  "epoch": 1783407600,
-  "generated_at": "2026-07-07T08:39:03.893203+00:00",
-  "snapshot_utc": "2026-07-07T07:00:00+00:00",
-  "snapshot_local": "2026-07-07T15:00:00+08:00",
-  "age_minutes": "99.06488671666666666666666667",
-  "status": "stale",
+  "epoch": 1783422000,
+  "generated_at": "2026-07-07T12:08:44.450168+00:00",
+  "snapshot_utc": "2026-07-07T11:00:00+00:00",
+  "snapshot_local": "2026-07-07T19:00:00+08:00",
+  "age_minutes": "68.74083613333333333333333333",
+  "status": "fresh",
   "errors": [],
-  "candidate_count": 0,
-  "stale_epoch_history": [
-    "1783378800",
-    "1783393200",
-    "1783407600"
-  ],
-  "source_delay_alert": true,
-  "candidates": []
+  "candidate_count": 1,
+  "stale_epoch_history": [],
+  "source_delay_alert": false,
+  "candidates": [
+    {
+      "status": "排除候選",
+      "route": [
+        "混沌石",
+        "崇高石",
+        "神聖石"
+      ],
+      "profit_percent": "0.2322074170092940426465759494",
+      "gold_per_divine_profit": "121258.7408334563244276997518",
+      "divine_profit_per_100k_gold": "0.8246828171945617310747245978",
+      "risk_tags": [
+        "歷史候選",
+        "需要遊戲內驗證",
+        "訂單比例未知",
+        "缺少起始通貨",
+        "金幣效率不達標"
+      ]
+    }
+  ]
 }
